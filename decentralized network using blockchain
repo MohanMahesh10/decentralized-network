@@ -1,0 +1,44 @@
+# decentralized-network
+import socket
+import threading
+
+class Peer:
+    def __init__(self, host, port):
+        self.host = host
+        self.port = port
+        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.peers = []
+
+    def start(self):
+        self.server.bind((self.host, self.port))
+        self.server.listen(5)
+        print("Server started on {}:{}".format(self.host, self.port))
+        while True:
+            conn, addr = self.server.accept()
+            print("Connected by", addr)
+            self.peers.append(conn)
+            threading.Thread(target=self.handle_connection, args=(conn,)).start()
+
+    def handle_connection(self, conn):
+        while True:
+            data = conn.recv(1024)
+            if not data:
+                print("Disconnected")
+                self.peers.remove(conn)
+                conn.close()
+                return
+            for peer in self.peers:
+                if peer != conn:
+                    peer.sendall(data)
+
+    def send_message(self, message):
+        for peer in self.peers:
+            peer.sendall(message.encode())
+
+if __name__ == "__main__":
+    peer = Peer("localhost", 5000)
+    threading.Thread(target=peer.start).start()
+    while True:
+        message = input("Enter a message: ")
+        peer.send_message(message)
+
